@@ -13,17 +13,20 @@ export async function POST(req: Request) {
 
       console.log("message recieved:", message)
       
-      const url = message.match(urlPattern);
+      const urlMatches = message.match(urlPattern);
+      const extractedUrl = urlMatches && urlMatches[0]; // The first matched URL string
+
 
       let scrappedContent = "";
-      if (url) {
-        console.log("URL found:", url);
-        const scrapperResponse = await scrapeURL(url);
+      if (extractedUrl) {
+        console.log("URL found:", extractedUrl);
+        const scrapperResponse = await scrapeURL(extractedUrl);
         scrappedContent = scrapperResponse.content;
         console.log("Scrapped content", scrappedContent);
       }
 
-      const userQuery = message.replace(url ? url[0] : '', '').trim();
+
+      const userQuery = message.replace(scrappedContent ? scrappedContent[0] : '', '').trim();
 
       const prompt = `
         Answer my question: "${userQuery}"
@@ -41,7 +44,7 @@ export async function POST(req: Request) {
 
   } catch (error) {
 
-    return NextResponse.json({message: "Error"})
+    return NextResponse.json({message: "Error: ", error})
 
   }
 }

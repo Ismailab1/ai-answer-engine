@@ -97,6 +97,8 @@ export async function scrapeURL(url:string)
         };
 
         await cacheContent(url, finalResponse);
+        return finalResponse;
+
     }
     catch (error) {
         console.log('Error scrapping ${url}: ', error);
@@ -209,8 +211,10 @@ async function cacheContent(
             await redis.set(cacheKey, serealized, { ex: CACHE_TTL});
 
             logger.info(
-                `Successfully cached content for: ${url} (${serealized.length} nytes, TTL ${CACHE_TTL})`
+                `Successfully cached content for: ${url} (${serealized.length} bytes, TTL ${CACHE_TTL})`
             )
+        } catch (error) {
+            logger.error(`Caching content error: ${error}`);
         }
     
 }
