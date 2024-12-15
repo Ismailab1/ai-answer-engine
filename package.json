@@ -19,7 +19,8 @@
     "next": "15.0.4",
     "prettier": "^3.4.2",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@types/node": "^20",

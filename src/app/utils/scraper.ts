@@ -3,218 +3,220 @@ import * as cheerio from "cheerio";
 import { Logger } from "./logger";
 import { Redis } from "@upstash/redis";
 
-const logger = new Logger("scrapper")
+const logger = new Logger("scrapper");
 
 const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
-})
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
 
 const CACHE_TTL = 7 * (24 * 60 * 60);
 const MAX_CACHE_SIZE = 1024000;
 
-export const urlPattern = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/gi;
+export const urlPattern =
+  /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/gi;
 
 function cleanText(text: string): string {
-    return text.replace(/\s+/g, " ").replace(/\n+/g, " ").trim()
+  return text.replace(/\s+/g, " ").replace(/\n+/g, " ").trim();
 }
 
-export async function scrapeURL(url:string)
-{
-    try {
-        logger.info(`Starting scrape process for: ${url}`);
-        const cached = await getCachedContent(url);
-        if (cached) {
-            logger.info(`Using cached content for: ${url}`);
-            return cached;
-        }
-        logger.info(`Cache miss - proceeding with fresh scrape for ${url}`);
-
-        const response = await axios.get(url);
-        const $ = cheerio.load(response.data);
-
-        $("script").remove();
-        $("style").remove();
-        $("noscript").remove();
-        $("iframe").remove();
-
-        const title = $("title").text();
-        const metaDescription = $('meta[name="description"]').attr("content") || "";
-        const h1 = $("h1")
-            .map((_, el) => $(el).text())
-            .get()
-            .join(" ");
-        const h2 = $("h2")
-            .map((_, el) => $(el).text())
-            .get()
-            .join(" ");
-
-        const articleText = $("article")
-            .map((_, el) => $(el).text())
-            .get()
-            .join(" ");
-        const mainText = $("main")
-            .map((_, el) => $(el).text())
-            .get()
-            .join(" ");
-        const contentText = $('.content, #content, [class*="content"]')
-            .map((_, el) => $(el).text())
-            .get()
-            .join(" ");
-        
-        const paragraphs = $("p")
-            .map((_, el) => $(el).text())
-            .get()
-            .join(" ");
-        const listItems = $("li")
-            .map((_, el) => $(el).text())
-            .get()
-            .join(" ");
-        
-        let combineContent = [
-            title,
-            metaDescription,
-            h1,
-            h2,
-            articleText,
-            mainText,
-            contentText,
-            paragraphs,
-            listItems,
-        ].join()
-
-        combineContent = cleanText(combineContent).slice(0, 40000);
-        const finalResponse = {
-            url,
-            title: cleanText(title),
-            headings: {
-                h1: cleanText(h1),
-                h2: cleanText(h2),
-            },
-            metaDescription: cleanText(metaDescription),
-            content: combineContent,
-            error: null,
-        };
-
-        await cacheContent(url, finalResponse);
-        return finalResponse;
-
+export async function scrapeURL(url: string) {
+  try {
+    logger.info(`Starting scrape process for: ${url}`);
+    const cached = await getCachedContent(url);
+    if (cached) {
+      logger.info(`Using cached content for: ${url}`);
+      return cached;
     }
-    catch (error) {
-        console.log('Error scrapping ${url}: ', error);
-        return{
-            url,
-            title: "",
-            headings: { h1: "", h2: ""},
-            metaDescription: "",
-            content: "",
-            error: "Failed to scrape url",
-        };
-    }
+    logger.info(`Cache miss - proceeding with fresh scrape for ${url}`);
+
+    const response = await axios.get(url);
+    const $ = cheerio.load(response.data);
+
+    $("script").remove();
+    $("style").remove();
+    $("noscript").remove();
+    $("iframe").remove();
+
+    const title = $("title").text();
+    const metaDescription = $('meta[name="description"]').attr("content") || "";
+    const h1 = $("h1")
+      .map((_, el) => $(el).text())
+      .get()
+      .join(" ");
+    const h2 = $("h2")
+      .map((_, el) => $(el).text())
+      .get()
+      .join(" ");
+
+    const articleText = $("article")
+      .map((_, el) => $(el).text())
+      .get()
+      .join(" ");
+    const mainText = $("main")
+      .map((_, el) => $(el).text())
+      .get()
+      .join(" ");
+    const contentText = $('.content, #content, [class*="content"]')
+      .map((_, el) => $(el).text())
+      .get()
+      .join(" ");
+
+    const paragraphs = $("p")
+      .map((_, el) => $(el).text())
+      .get()
+      .join(" ");
+    const listItems = $("li")
+      .map((_, el) => $(el).text())
+      .get()
+      .join(" ");
+
+    let combineContent = [
+      title,
+      metaDescription,
+      h1,
+      h2,
+      articleText,
+      mainText,
+      contentText,
+      paragraphs,
+      listItems,
+    ].join();
+
+    combineContent = cleanText(combineContent).slice(0, 40000);
+    const finalResponse = {
+      url,
+      title: cleanText(title),
+      headings: {
+        h1: cleanText(h1),
+        h2: cleanText(h2),
+      },
+      metaDescription: cleanText(metaDescription),
+      content: combineContent,
+      error: null,
+    };
+
+    await cacheContent(url, finalResponse);
+    return finalResponse;
+  } catch (error) {
+    console.log("Error scrapping ${url}: ", error);
+    return {
+      url,
+      title: "",
+      headings: { h1: "", h2: "" },
+      metaDescription: "",
+      content: "",
+      error: "Failed to scrape url",
+    };
+  }
 }
 
 export interface ScrapedContent {
-    url: string,
-    title: string,
-    headings: {
-        h1: string,
-        h2: string,
-    };
-    metaDescription: string;
-    content: string;
-    error: string | null;
-    cachedAt?: number;
+  url: string;
+  title: string;
+  headings: {
+    h1: string;
+    h2: string;
+  };
+  metaDescription: string;
+  content: string;
+  error: string | null;
+  cachedAt?: number;
 }
 
 function isValidScrapedContent(data: any): data is ScrapedContent {
-    return (
-        typeof data == "object" &&
-        data !== null &&
-        typeof data.url === "string" &&
-        typeof data.title === "string" &&
-        typeof data.headings === "object" &&
-        typeof data.headings.h1 === "string" &&
-        typeof data.headings.h2 === "string" &&
-        typeof data.metaDescription === "string" &&
-        typeof data.content === "string" &&
-        (data.error === null || typeof data.error === "string")
-    );
+  return (
+    typeof data == "object" &&
+    data !== null &&
+    typeof data.url === "string" &&
+    typeof data.title === "string" &&
+    typeof data.headings === "object" &&
+    typeof data.headings.h1 === "string" &&
+    typeof data.headings.h2 === "string" &&
+    typeof data.metaDescription === "string" &&
+    typeof data.content === "string" &&
+    (data.error === null || typeof data.error === "string")
+  );
 }
 
 function getCacheKey(url: string): string {
-    const sanatizedURL = url.substring(0, 200);
-    return `scrape:${sanatizedURL}`;
+  const sanatizedURL = url.substring(0, 200);
+  return `scrape:${sanatizedURL}`;
 }
 
 async function getCachedContent(url: string): Promise<ScrapedContent | null> {
-    try {
-        const cacheKey = getCacheKey(url);
-        logger.info(`Checking cache for key: ${cacheKey}`);
-        const cached = await redis.get(cacheKey);
+  try {
+    const cacheKey = getCacheKey(url);
+    logger.info(`Checking cache for key: ${cacheKey}`);
+    const cached = await redis.get(cacheKey);
 
-        if (!cached) {
-            logger.info(`Cache miss - No cached content found for: ${url}`);
-            return null;
-        }
+    if (!cached) {
+      logger.info(`Cache miss - No cached content found for: ${url}`);
+      return null;
+    }
 
-        logger.info(`Cache hit - Found cached content for: ${url}`);
+    logger.info(`Cache hit - Found cached content for: ${url}`);
 
-        let parsed: any;
-        if (typeof cached == "string") {
-            try {
-                parsed = JSON.parse(cached);
-            } catch (parseError) {
-                logger.error(`JSON parse error for cached content: ${parseError}`);
-                await redis.del(cacheKey);
-                return null;
-            }
-        } else {
-            parsed = cached;
-        }
-
-        if (isValidScrapedContent(parsed)) {
-            const age = Date.now() - (parsed.cachedAt || 0);
-            logger.info(`Cache content age: ${Math.round(age / 1000 / 60)} minutes`);
-            return parsed;
-        }
-
-        logger.warn(`Invalid cached content format for URL: ${url}`);
+    let parsed: any;
+    if (typeof cached == "string") {
+      try {
+        parsed = JSON.parse(cached);
+      } catch (parseError) {
+        logger.error(`JSON parse error for cached content: ${parseError}`);
         await redis.del(cacheKey);
         return null;
-    } catch (error) {
-        logger.error(`Cache retrieval error: ${error}`);
-        return null;
+      }
+    } else {
+      parsed = cached;
     }
+
+    if (isValidScrapedContent(parsed)) {
+      const age = Date.now() - (parsed.cachedAt || 0);
+      logger.info(`Cache content age: ${Math.round(age / 1000 / 60)} minutes`);
+      return parsed;
+    }
+
+    logger.warn(`Invalid cached content format for URL: ${url}`);
+    await redis.del(cacheKey);
+    return null;
+  } catch (error) {
+    logger.error(`Cache retrieval error: ${error}`);
+    return null;
+  }
 }
 
 async function cacheContent(
-    url: string,
-    content: ScrapedContent): Promise<void> {
-        try {
-            const cacheKey = getCacheKey(url);
-            content.cachedAt = Date.now();
+  url: string,
+  content: ScrapedContent
+): Promise<void> {
+  try {
+    const cacheKey = getCacheKey(url);
+    content.cachedAt = Date.now();
 
-            if (!isValidScrapedContent(content)) {
-                logger.error(`Attempted to cache invalid content format for URL: ${url}`);
-                return;
-            }
+    if (!isValidScrapedContent(content)) {
+      logger.error(`Attempted to cache invalid content format for URL: ${url}`);
+      return;
+    }
 
-            const serealized = JSON.stringify(content);
+    const serealized = JSON.stringify(content);
 
-            if (serealized.length > MAX_CACHE_SIZE) {
-                logger.warn (
-                    `Content to large to cache for url: ${url} (${serealized.length} bytes)`
-                );
-                return;
-            }
+    if (serealized.length > MAX_CACHE_SIZE) {
+      logger.warn(
+        `Content to large to cache for url: ${url} (${serealized.length} bytes)`
+      );
+      return;
+    }
 
-            await redis.set(cacheKey, serealized, { ex: CACHE_TTL});
+    await redis.set(cacheKey, serealized, { ex: CACHE_TTL });
 
-            logger.info(
-                `Successfully cached content for: ${url} (${serealized.length} bytes, TTL ${CACHE_TTL})`
-            )
-        } catch (error) {
-            logger.error(`Caching content error: ${error}`);
-        }
-    
+    logger.info(
+      `Successfully cached content for: ${url} (${serealized.length} bytes, TTL ${CACHE_TTL})`
+    );
+  } catch (error) {
+    logger.error(`Caching content error: ${error}`);
+  }
 }
+
+
+
+

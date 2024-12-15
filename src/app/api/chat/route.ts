@@ -3,32 +3,35 @@
 // Refer to the Groq SDK here on how to use an LLM: https://www.npmjs.com/package/groq-sdk
 // Refer to the Cheerio docs here on how to parse HTML: https://cheerio.js.org/docs/basics/loading
 // Refer to Puppeteer docs here: https://pptr.dev/guides/what-is-puppeteer
-import { NextResponse } from "next/server"
-import { getGroqResponse } from "@/app/utils/groqClient"
+import { NextResponse } from "next/server";
+import { getGroqResponse } from "@/app/utils/groqClient";
 import { scrapeURL, urlPattern } from "@/app/utils/scraper";
 
 export async function POST(req: Request) {
   try {
-    const { message } = await req.json()
+    const { message, messages } = await req.json();
 
-      console.log("message recieved:", message)
-      
-      const urlMatches = message.match(urlPattern);
-      const extractedUrl = urlMatches && urlMatches[0]; // The first matched URL string
+    console.log("message recieved:", message);
+    console.log("messages:", messages);
 
+    const urlMatches = message.match(urlPattern);
+    const extractedUrl = urlMatches && urlMatches[0]; // The first matched URL string
 
-      let scrappedContent = "";
-      if (extractedUrl) {
-        console.log("URL found:", extractedUrl);
-        const scrapperResponse = await scrapeURL(extractedUrl);
+    let scrappedContent = "";
+    if (extractedUrl) {
+      console.log("URL found:", extractedUrl);
+      const scrapperResponse = await scrapeURL(extractedUrl);
+      console.log("Scrapped content", scrappedContent);
+      if (scrapperResponse) {
         scrappedContent = scrapperResponse.content;
-        console.log("Scrapped content", scrappedContent);
       }
+    }
 
+    const userQuery = message
+      .replace(scrappedContent ? scrappedContent[0] : "", "")
+      .trim();
 
-      const userQuery = message.replace(scrappedContent ? scrappedContent[0] : '', '').trim();
-
-      const prompt = `
+    const userPrompt = `
         Answer my question: "${userQuery}"
 
         Based on the following content:
@@ -36,15 +39,24 @@ export async function POST(req: Request) {
           ${scrappedContent}
         </content>
       `;
-      console.log("PROMPT:", prompt);
 
-      const response = await getGroqResponse(message);
+    const llmMessages = [
+      ...messages,
+      {
+        role: "user",
+        content: userPrompt,
+      },
+    ];
 
-      return NextResponse.json( {message: response} )
+    console.log(llmMessages);
 
+    const response = await getGroqResponse(llmMessages);
+
+    console.log("In route.ts psot response");
+
+    return NextResponse.json({ message: response });
   } catch (error) {
-
-    return NextResponse.json({message: "Error: ", error})
-
+    console.log(error);
+    return NextResponse.json({ message: "Error: ", error });
   }
 }

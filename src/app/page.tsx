@@ -1,23 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Message = {
-  role: "user" | "ai";
+  role: "user" | "assistant";
   content: string;
 };
 
 export default function Home() {
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    { role: "ai", content: "Hello! How can I help you today?" },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadConversation() {
+      try {
+        // If we have a conversationId already, use it, otherwise omit the param
+        const url = conversationId 
+          ? `/api/conversation?id=${conversationId}` 
+          : `/api/conversation`;
+        
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (data.id) {
+          setConversationId(data.id);
+        }
+
+        if (data.conversation && Array.isArray(data.conversation)) {
+          setMessages(data.conversation);
+        } else {
+          // If no conversation found (unlikely with the new logic), default greeting
+          setMessages([{ role: "assistant", content: "Hello! How can I help you today?" }]);
+        }
+      } catch (error) {
+        console.error("Failed to load conversation:", error);
+        setMessages([{ role: "assistant", content: "Hello! How can I help you today?" }]);
+      }
+    }
+
+    loadConversation();
+  }, [conversationId]);
 
   const handleSend = async () => {
     if (!message.trim()) return;
 
-    // Add user message to the conversation
     const userMessage = { role: "user" as const, content: message };
     setMessages(prev => [...prev, userMessage]);
     setMessage("");
@@ -29,16 +57,14 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message }),
+        // Always include the messages and the conversationId if available
+        body: JSON.stringify({ message, messages, conversationId }),
       });
-
-      // TODO: Handle the response from the chat API to display the AI response in the UI
 
       const data = await response.json();
       console.log("data", data);
 
-      setMessages(prev => [...prev, { role: "ai", content: data.message }])
-
+      setMessages(prev => [...prev, { role: "assistant", content: data.message }]);
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -46,9 +72,6 @@ export default function Home() {
     }
   };
 
-
-  // TODO: Modify the color schemes, fonts, and UI as needed for a good user experience
-  // Refer to the Tailwind CSS docs here: https://tailwindcss.com/docs/customizing-colors, and here: https://tailwindcss.com/docs/hover-focus-and-other-states
   return (
     <div className="flex flex-col h-screen bg-gray-900">
       {/* Header */}
@@ -65,14 +88,12 @@ export default function Home() {
             <div
               key={index}
               className={`flex gap-4 mb-4 ${
-                msg.role === "ai"
-                  ? "justify-start"
-                  : "justify-end flex-row-reverse"
+                msg.role === "assistant" ? "justify-start" : "justify-end flex-row-reverse"
               }`}
             >
               <div
                 className={`px-4 py-2 rounded-2xl max-w-[80%] ${
-                  msg.role === "ai"
+                  msg.role === "assistant"
                     ? "bg-gray-800 border border-gray-700 text-gray-100"
                     : "bg-cyan-600 text-white ml-auto"
                 }`}
