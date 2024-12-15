@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getConversation, saveConversations } from "@/app/utils/saveConversations";
+import {
+  getConversation,
+  saveConversations,
+} from "@/app/utils/saveConversations";
 import { v4 as uuidv4 } from "uuid";
 import { ChatMesage } from "@/app/utils/groqClient"; // Adjust the import path if necessary
 

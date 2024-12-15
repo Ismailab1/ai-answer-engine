@@ -216,7 +216,3 @@ async function cacheContent(
     logger.error(`Caching content error: ${error}`);
   }
 }
-
-
-
-

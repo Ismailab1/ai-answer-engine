@@ -20,7 +20,7 @@ export async function getGroqResponse(chatMesages: ChatMesage[]) {
       content:
         "You are an academic expert, you aways cite your sources and base your responses on the context that you have been provided.",
     },
-    ...chatMesages
+    ...chatMesages,
   ];
 
   console.log("Starting groq api request");

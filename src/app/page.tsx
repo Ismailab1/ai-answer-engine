@@ -17,13 +17,13 @@ export default function Home() {
     async function loadConversation() {
       try {
         // If we have a conversationId already, use it, otherwise omit the param
-        const url = conversationId 
-          ? `/api/conversation?id=${conversationId}` 
+        const url = conversationId
+          ? `/api/conversation?id=${conversationId}`
           : `/api/conversation`;
-        
+
         const res = await fetch(url);
         const data = await res.json();
-        
+
         if (data.id) {
           setConversationId(data.id);
         }
@@ -32,11 +32,15 @@ export default function Home() {
           setMessages(data.conversation);
         } else {
           // If no conversation found (unlikely with the new logic), default greeting
-          setMessages([{ role: "assistant", content: "Hello! How can I help you today?" }]);
+          setMessages([
+            { role: "assistant", content: "Hello! How can I help you today?" },
+          ]);
         }
       } catch (error) {
         console.error("Failed to load conversation:", error);
-        setMessages([{ role: "assistant", content: "Hello! How can I help you today?" }]);
+        setMessages([
+          { role: "assistant", content: "Hello! How can I help you today?" },
+        ]);
       }
     }
 
@@ -64,7 +68,10 @@ export default function Home() {
       const data = await response.json();
       console.log("data", data);
 
-      setMessages(prev => [...prev, { role: "assistant", content: data.message }]);
+      setMessages(prev => [
+        ...prev,
+        { role: "assistant", content: data.message },
+      ]);
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -88,7 +95,9 @@ export default function Home() {
             <div
               key={index}
               className={`flex gap-4 mb-4 ${
-                msg.role === "assistant" ? "justify-start" : "justify-end flex-row-reverse"
+                msg.role === "assistant"
+                  ? "justify-start"
+                  : "justify-end flex-row-reverse"
               }`}
             >
               <div
